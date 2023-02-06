@@ -1,0 +1,15 @@
+---
+title: "Pour_retracer_ce_qu_on_fait"
+output: html_document
+date: "2023-02-06"
+---
+
+# Détail des opérations
+
+Le but de ce markdown c'est de condenser les informations de nos recherches respectives, en gros retracer ce qu'on fait et nos diverses tentatives (faudrait peut-être créer 3 Markdown, un chacun)
+
+![](gif.gif)
+
+```{r}
+print("yes je vous ai eu !")
+```
