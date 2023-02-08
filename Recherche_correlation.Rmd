@@ -1,0 +1,104 @@
+---
+title: "Recherche_correlation"
+output: pdf_document
+date: "2023-02-08"
+---
+
+Le but de ce fichier est de rechercher des corrélations entre les différentes variables étudiées de notre base de donnée (histoire d'en extraire une problématique (éventuellement))
+
+```{r}
+rm(list = ls())
+# Lien bien utile http://www.sthda.com/english/wiki/correlation-matrix-a-quick-start-guide-to-analyze-format-and-visualize-a-correlation-matrix-using-r-software#compute-correlation-matrix
+```
+
+Pour rappel : 
+"factor" ça veut dire qu'une variable ne peut prendre que des valeurs prédéfinies (genre on liste les différentes valeurs prises dans le fichier csv et on définie ça comme étant les seules valeurs possible que peut prendre une des variables d'un des vecteurs de la base de donnée)
+
+On importe la base de donnée (opération longue mais nécéssaire)
+```{r}
+#us_accident <- read.csv('US_Accidents_Dec21_updated.csv')
+us_accident <- read.csv('US_Accidents_Dec21_updated.csv', stringsAsFactors = TRUE, skipNul = TRUE, na.strings=c(''))
+```
+
+En gros, dans le premier dataframe "us_accident", on peut observer des string (factor), 
+la fonction ci-dessous convertie les string en numérique (pour pouvoir faire des calculs dessus) 
+
+```{r} 
+#install.packages("dplyr")
+library("dplyr")
+us_accident_cor <- us_accident %>% 
+  mutate_if(is.factor, as.numeric)
+```
+
+Ici, sera print une matrice de correlation des différentes variables de la base 
+
+- Covariance (2 variables) : $Cov(X,Y) = E[(X - E[X])(Y-E[Y])] = E[XY] - E[X]E[Y]$
+- Matrice de Covariance (2 vecteurs) : $V(X,Y) = E[(X - E[X]).(Y-E[Y])^T]$
+
+- Coefficient de Corrélation (2 variables) : $Corr(X,Y) = \frac{Cov(X,Y)}{\sqrt{Var(X)Var(Y)}}$
+- Coefficient d'une matrice de Corrélation (2 vecteurs) : $r_{i,j} = \frac{Cov(X_i,X_j)}{\sqrt{Var(X_i)Var(X_j)}}$
+
+Problème : 
+
+```{r}
+sapply(us_accident, class)
+```
+
+On peut maintenant créer la matrice de correlation (attention y'a des NA)
+```{r}
+matrice_correlation <- cor(us_accident_cor) # use="complete.obs" ?
+matrice_correlation
+```
+
+
+p-values
+```{r}
+#install.packages("Hmisc")
+library("Hmisc")
+matrice_correlation_p <- rcorr(as.matrix(us_accident_cor))
+matrice_correlation_p
+```
+(Code à passer - On sait jamais, la fonction est zolie)
+```{r}
+Normalise_matrice <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+```
+
+
+Reste pas trop clair mais bon
+
+Plot
+```{r}
+#install.packages("corrplot")
+library("corrplot")
+
+corrplot(replace(matrice_correlation, is.na(matrice_correlation), 0), 
+         type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 90, tl.)
+```
+
+Histogramme
+```{r}
+#install.packages("PerformanceAnalytics")
+library("PerformanceAnalytics")
+
+chart.Correlation(replace(matrice_correlation, is.na(matrice_correlation), 0),
+                  histogram=TRUE, pch=19)
+# Trop d'Avis ! (le résultat est en bas - y'a un bouton pour réduire le résultat juste en dessous de la cellule)
+```
+
+
+
+
+```{r}
+col<- colorRampPalette(c("blue", "white", "red", "green", "purple", "gray", "pink"))(20)
+heatmap(x = replace(matrice_correlation, is.na(matrice_correlation), 0), col = col, symm = TRUE)
+```
+

@@ -10,4 +10,4 @@ summary(us_accident) # Résumé statistique par colone de la base de données
 
 head(us_accident) # 
 
-sapply(us_accident, class) # comme apply ci-dessus mais appliqué à chaque vecteur de iris
+sapply(us_accident, class) 
