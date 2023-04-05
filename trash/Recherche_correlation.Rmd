@@ -1,0 +1,176 @@
+---
+title: "Recherche_correlation"
+output: pdf_document
+date: "2023-02-08"
+---
+# Recherche de corrélation
+RESTER SUR DES MODÈLES SIMPLES - comme ça c'est dis
+
+On nous demande soit de faire un problème de classification, soit de prédiction 
+
+## Info pratiques
+
+- Prédiction : On cherche à prédire
+- Classification : On cherche à classifier (appartenance à un type)
+
+Exemple : 
+- Prédiction de la sévérité/de sa durée/... d'un accident (y'a une variable qui s'appelle sévérité) - 1 variable 
+- Classification : Décider si un accident est grave en fonction de toutes autres variables (que la sévérité)
+
+
+Le but de ce fichier est de rechercher des corrélations entre les différentes variables étudiées de notre base de donnée (histoire d'en extraire une problématique (éventuellement))
+
+```{r}
+rm(list = ls())
+# Lien bien utile http://www.sthda.com/english/wiki/correlation-matrix-a-quick-start-guide-to-analyze-format-and-visualize-a-correlation-matrix-using-r-software#compute-correlation-matrix
+```
+
+Pour rappel : 
+"factor" ça veut dire qu'une variable ne peut prendre que des valeurs prédéfinies (genre on liste les différentes valeurs prises dans le fichier csv et on définie ça comme étant les seules valeurs possible que peut prendre une des variables d'un des vecteurs de la base de donnée)
+
+# Début des calculs
+
+## Imports 
+
+On importe la base de donnée (opération longue mais nécéssaire)
+```{r}
+# us_accident <- read.csv('US_Accidents_Dec21_updated.csv')
+us_accident <- read.csv("diabetes_binary_5050split_health_indicators_BRFSS2015.csv", stringsAsFactors = TRUE, skipNul = TRUE, na.strings = c(""), sep = ",")
+```
+
+## Clean your room !
+
+Première chose à faire : "clean" la base de donnée (on enlève les colonnes qui ne nous intéressent pas, on enlève les lignes qui ne nous intéressent pas, on convertie les string en numérique (pour pouvoir faire des calculs dessus))
+
+Par exemple, dans notre base de données, on a 2 colones (start time et end time), on peut les fusioner en une variable "durée"
+
+En gros, dans le premier dataframe "us_accident", on peut observer des string (factor), 
+la fonction ci-dessous convertie les string en numérique (pour pouvoir faire des calculs dessus) 
+
+```{r} 
+#install.packages("dplyr")
+library("dplyr")
+
+# On enlève les colonnes qui ne nous intéressent pas
+# TODO
+
+# On convertie les string en numérique (pour pouvoir faire des calculs dessus)
+us_accident_cor <- us_accident %>%
+  mutate_if(is.factor, as.numeric)
+```
+
+Ici, sera print une matrice de correlation des différentes variables de la base 
+
+- Covariance (2 variables) : $Cov(X,Y) = E[(X - E[X])(Y-E[Y])] = E[XY] - E[X]E[Y]$
+- Matrice de Covariance (2 vecteurs) : $V(X,Y) = E[(X - E[X]).(Y-E[Y])^T]$
+
+- Coefficient de Corrélation (2 variables) : $Corr(X,Y) = \frac{Cov(X,Y)}{\sqrt{Var(X)Var(Y)}}$
+- Coefficient d'une matrice de Corrélation (2 vecteurs) : $r_{i,j} = \frac{Cov(X_i,X_j)}{\sqrt{Var(X_i)Var(X_j)}}$
+
+Problème : 
+
+```{r}
+sapply(us_accident, class)
+```
+
+On peut maintenant créer la matrice de correlation (attention y'a des NA)
+```{r}
+temp <- cor(us_accident_cor)
+matrice_correlation <- replace(temp, is.na(temp), 0) # use="complete.obs" ?
+matrice_correlation
+```
+
+
+p-values
+```{r}
+# install.packages("Hmisc")
+
+library("Hmisc")
+matrice_correlation_p <- rcorr(as.matrix(us_accident_cor))
+matrice_correlation_p
+```
+(Code à passer - On sait jamais, la fonction est zolie)
+```{r}
+Normalise_matrice <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor = (cormat)[ut],
+    p = pmat[ut]
+  )
+}
+```
+
+
+Reste pas trop clair mais bon
+
+Plot Gloabal 
+```{r}
+#install.packages("corrplot")
+
+library("corrplot")
+
+corrplot(matrice_correlation, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+```
+
+On identifie les variables qui sont corrélées (on peut voir les valeurs en dessous)
+```{r}
+Normalise_matrice(matrice_correlation, matrice_correlation_p$P)
+```
+Puis on peut les afficher (on peut voir les valeurs en dessous)
+```{r}
+Normalise_matrice(matrice_correlation, matrice_correlation_p$P) %>%
+  filter(cor > 0.5)
+```
+
+Histogramme
+```{r}
+#install.packages("PerformanceAnalytics")
+
+library("PerformanceAnalytics")
+
+chart.Correlation(replace(matrice_correlation, is.na(matrice_correlation), 0),
+  histogram = TRUE, pch = 19
+)
+# Trop d'Avis ! (le résultat est en bas - y'a un bouton pour réduire le résultat juste en dessous de la cellule)
+```
+
+```{r}
+col <- colorRampPalette(c("blue", "white", "red", "green", "purple", "gray", "pink"))(20)
+heatmap(x = replace(matrice_correlation, is.na(matrice_correlation), 0), col = col, symm = TRUE)
+```
+
+
+Une fois que l'on a choisit notre base de donnée, on peut faire des trucs plus intéressants (genre faire des histogrammes, des boxplot, des scatterplot, des barplot, des piechart, des qqplot, des qqline, des qqnorm,...)
+  
+```{r}
+  # Pour chaque variable, on fait un histogramme
+  for (i in 1:ncol(us_accident_cor)) {
+    hist(us_accident_cor[,i], main = colnames(us_accident_cor)[i])
+  }
+```
+
+On va maintenant tenter de clusteriser les données (pour voir si on peut trouver des groupes de données qui se ressemblent)
+
+```{r}
+install.packages("amap")
+library("amap")
+matrice_correlation <- scale(matrice_correlation)
+matrice_correlation <- t(matrice_correlation)
+mydi = Dist(matrice_correlation,method="abspearson") # Distance sur la valeur absolue des corrélation (peut importe que ce soit neg ou pos)
+```
+
+```{r}	
+myclust <- hclust(mydi)
+
+plot(myclust)
+```
+
+```{r}
+library("cluster")
+
+clusplot(matrice_correlation, myclust$labels, color=TRUE, shade=TRUE, labels=2, lines=0)
+```
+
